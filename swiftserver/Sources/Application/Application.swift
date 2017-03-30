@@ -2,7 +2,9 @@ import Foundation
 import Kitura
 import LoggerAPI
 import Configuration
-import Generated
+import CloudFoundryConfig
+import SwiftMetrics
+import SwiftMetricsDash
 
 public let router = Router()
 public let manager = ConfigurationManager()
@@ -13,12 +15,13 @@ public func initialize() throws {
     manager.load(file: "config.json", relativeFrom: .project)
            .load(.environmentVariables)
 
-    port = manager["port"] as? Int ?? port
+    port = manager.port
+
+    let sm = try SwiftMetrics()
+    let _ = try SwiftMetricsDash(swiftMetricsInstance : sm, endpoint: router)
 
     router.all("/*", middleware: BodyParser())
-
-    try initializeCRUDResources(manager: manager, router: router)
-    initializeSwaggerRoute(path: ConfigurationManager.BasePath.project.path + "/definitions/swiftserver.yaml")
+    router.all("/", middleware: StaticFileServer())
 }
 
 public func run() throws {
